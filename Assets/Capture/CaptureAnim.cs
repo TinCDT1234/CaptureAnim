@@ -9,24 +9,24 @@ public class CaptureAnim : MonoBehaviour
 {
     public float stepDuration = 0.1f;
     public int numberOfPictures = 50;
-    public Vector2Int cellSize = new Vector2Int(100,100);
+    public Vector2Int cellPixelSize = new Vector2Int(100,100);
     public Camera captureCamera;
 
-    public int numberOfCells;
-    public Vector2Int atlasSize;
-    public Texture2D diffuseMap; //gross png
+    public int atlasDimension;
+    public Vector2Int atlasPixelSize;
+    public Texture2D targetPNG; //gross png
     public Vector2Int currentAtlasPos;
    
     private void Awake()
     {
         captureCamera = Camera.main;
 
-        numberOfCells = Mathf.CeilToInt(Mathf.Sqrt(numberOfPictures));
+        atlasDimension = Mathf.CeilToInt(Mathf.Sqrt(numberOfPictures));
 
-        atlasSize = cellSize * numberOfCells;
-        currentAtlasPos = new Vector2Int(0, atlasSize.y - cellSize.y);
+        atlasPixelSize = cellPixelSize * atlasDimension;
+        currentAtlasPos = new Vector2Int(0, atlasPixelSize.y - cellPixelSize.y);
 
-        diffuseMap = new Texture2D(atlasSize.x, atlasSize.y, TextureFormat.ARGB32, false)
+        targetPNG = new Texture2D(atlasPixelSize.x, atlasPixelSize.y, TextureFormat.ARGB32, false)
         {
             filterMode = FilterMode.Point
         };
@@ -35,7 +35,7 @@ public class CaptureAnim : MonoBehaviour
     public void CaptureDynamic()
     {
 
-        ClearAtlas(diffuseMap, Color.clear);
+        ClearAtlas(targetPNG, Color.clear);
 
         CaptureRecursion(0);
         
@@ -44,20 +44,19 @@ public class CaptureAnim : MonoBehaviour
     public void CaptureRecursion(int count)
     {
         CaptureSingle(count);
+
         if(count>=50) 
         {
-            SaveCapture(diffuseMap);
+            SaveCapture(targetPNG);
             return;
         }
 
         LeanTween.delayedCall(stepDuration, () => { CaptureRecursion(count + 1); });
-
-
     }
 
     public void CaptureSingle(int count)
     {
-        var rtFrame = new RenderTexture(cellSize.x, cellSize.y, 24, RenderTextureFormat.ARGB32)
+        var rtFrame = new RenderTexture(cellPixelSize.x, cellPixelSize.y, 24, RenderTextureFormat.ARGB32)
         {
             filterMode = FilterMode.Point,
             antiAliasing = 1,
@@ -70,19 +69,19 @@ public class CaptureAnim : MonoBehaviour
         captureCamera.backgroundColor = Color.clear;
         captureCamera.Render();
         Graphics.SetRenderTarget(rtFrame);
-        diffuseMap.ReadPixels(new Rect(0, 0, rtFrame.width, rtFrame.height), currentAtlasPos.x, currentAtlasPos.y);
-        diffuseMap.Apply();
+        targetPNG.ReadPixels(new Rect(0, 0, rtFrame.width, rtFrame.height), currentAtlasPos.x, currentAtlasPos.y);
+        targetPNG.Apply();
 
         captureCamera.targetTexture = null;
         captureCamera.Render();
         Graphics.SetRenderTarget(null);
 
-        currentAtlasPos.x += cellSize.x;
+        currentAtlasPos.x += cellPixelSize.x;
 
-        if ((count + 1) % numberOfCells == 0)
+        if ((count + 1) % atlasDimension == 0)
         {
             currentAtlasPos.x = 0;
-            currentAtlasPos.y -= cellSize.y;
+            currentAtlasPos.y -= cellPixelSize.y;
         }
     }
     private void ClearAtlas(Texture2D texture, Color color)
